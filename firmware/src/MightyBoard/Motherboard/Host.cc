@@ -563,6 +563,7 @@ void handleBuildStopNotification() {
 	buildState = BUILD_FINISHED_NORMALLY;
 #if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
 	steppers::disableZMinEnd(false);
+	steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 #endif
 	currentState = HOST_STATE_READY;
 }
@@ -628,6 +629,7 @@ bool processQueryPacket(const InPacket& from_host, OutPacket& to_host) {
 #if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
 					  steppers::disableZMinEnd(false);
 #endif
+                      steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 					  stopBuild();
 					  resetMe = false;
 				     }
@@ -859,6 +861,7 @@ void stopBuildNow() {
 #if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
 	steppers::disableZMinEnd(false);
 #endif
+    steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 }
 
 // Stop the current build, if any via an intermediate state (BUILD_CANCELLING),
@@ -883,6 +886,7 @@ void stopBuild() {
 #if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
 	steppers::disableZMinEnd(false);
 #endif
+    steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 }
 
 /// update state variables if print is paused
