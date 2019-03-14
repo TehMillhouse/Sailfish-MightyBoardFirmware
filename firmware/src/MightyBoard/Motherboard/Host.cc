@@ -533,6 +533,9 @@ void handleBuildStartNotification(CircularBuffer& buf) {
 		        lastFileIndex = 255;
 			break;
 	}
+#if defined(COOLING_FAN_PWM)
+	fan_pwm_cached_value = -1;//set fan as uninitialized.
+#endif
 	startPrintTime();
 #if defined(LINE_NUMBER)
 	command::clearLineNumber();
@@ -558,6 +561,10 @@ void handleBuildStopNotification() {
 	Motherboard::setExtra(false);
 
 	buildState = BUILD_FINISHED_NORMALLY;
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+	steppers::disableZMinEnd(false);
+	steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
+#endif
 	currentState = HOST_STATE_READY;
 }
 
@@ -619,6 +626,10 @@ bool processQueryPacket(const InPacket& from_host, OutPacket& to_host) {
 				    currentState == HOST_STATE_BUILDING_ONBOARD) {
 				     if (1 == eeprom::getEeprom8(eeprom_offsets::CLEAR_FOR_ESTOP, 0)) {
 					  buildState = BUILD_CANCELED;
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+					  steppers::disableZMinEnd(false);
+#endif
+                      steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 					  stopBuild();
 					  resetMe = false;
 				     }
@@ -847,6 +858,10 @@ void stopBuildNow() {
 	RGB_LED::setDefaultColor();
 #endif
     buildState = BUILD_CANCELED;
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+	steppers::disableZMinEnd(false);
+#endif
+    steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 }
 
 // Stop the current build, if any via an intermediate state (BUILD_CANCELLING),
@@ -868,6 +883,10 @@ void stopBuild() {
 		stopBuildNow();
     else
 		command::pause(true);
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+	steppers::disableZMinEnd(false);
+#endif
+    steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we start a print.
 }
 
 /// update state variables if print is paused

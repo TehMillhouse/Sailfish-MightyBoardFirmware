@@ -215,6 +215,7 @@ extern const unsigned char LINE_NUMBER_MSG[];
 
 extern const unsigned char BACK_TO_MONITOR_MSG[];
 extern const unsigned char STATS_MSG[];
+extern const unsigned char LIVE_Z_FIX[];
 extern const unsigned char CANCEL_BUILD_MSG[];
 extern const unsigned char HEATERS_OFF_MSG[];
 
@@ -268,6 +269,8 @@ extern const unsigned char ALT_UART_1_MSG[];
 #ifdef AUTO_LEVEL
 extern const unsigned char ALEVEL_UTILITY_COMP_MSG[];
 extern const unsigned char ALEVEL_COMP_OFFSET_MSG[];
+extern const unsigned char ALEVEL_PROBE_OFFSET[];
+extern const unsigned char ALEVEL_PROBE_OFFSET_MSG[];
 extern const unsigned char ALEVEL_SCREEN_MSG1[];
 extern const unsigned char ALEVEL_SCREEN_MSG2[];
 extern const unsigned char ALEVEL_UTILITY_MSG[];

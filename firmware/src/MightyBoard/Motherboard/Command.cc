@@ -954,7 +954,11 @@ bool processExtruderCommandPacket(int8_t overrideToolIndex) {
 			board.getExtruderBoard(toolIndex).setFan((command_buffer[4] & 0x01) != 0);
 			return true;
 		case SLAVE_CMD_TOGGLE_VALVE:
-		        board.setExtra((command_buffer[4] & 0x01) != 0);
+#if defined(COOLING_FAN_PWM)
+			board.setExtra(command_buffer[4], true);
+#else
+			board.setExtra((command_buffer[4] & 0x01) != 0);
+#endif
 			return true;
 		case SLAVE_CMD_SET_PLATFORM_TEMP:
 			if ( !eeprom::hasHBP() ) return true;
@@ -1882,6 +1886,14 @@ void runCommandSlice() {
 						  // Now cancel the build
 						  cancelMidBuild();
 					     }
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+					     else
+						 {
+							//those are not saved, so in case of reboot everything will be as usual
+							steppers::disableZMinEnd(true);
+						}
+#endif
+                        steppers::z_Offset_Change=0;//we reset the gap to ZERO to avoid summing it next time we do a movement
 					}
 					else if ( axes == (1 << A_AXIS) ) {
 					     // Trigger only for A

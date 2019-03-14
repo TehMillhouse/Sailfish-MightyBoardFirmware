@@ -81,7 +81,11 @@ const PROGMEM prog_uchar HEATING_SPACES_MSG[] = HEATING_MSG_DEF "             ";
 const PROGMEM prog_uchar BUILD_PERCENT_MSG[]    = " --%";
 const PROGMEM prog_uchar EXTRUDER1_TEMP_MSG[]   = "R Duese:    ---/---C";
 const PROGMEM prog_uchar EXTRUDER2_TEMP_MSG[]   = "L Duese:    ---/---C";
-const PROGMEM prog_uchar PLATFORM_TEMP_MSG[]    = "Plattform:  ---/---C";
+#if defined(COOLING_FAN_PWM)
+const PROGMEM prog_uchar PLATFORM_TEMP_MSG[]  =   "HBP:---/---C";
+#else
+const PROGMEM prog_uchar PLATFORM_TEMP_MSG[]  =   "Plattform:  ---/---C";
+#endif
 const PROGMEM prog_uchar EXTRUDER_TEMP_MSG[]    = "Duese:      ---/---C";
 const PROGMEM prog_uchar FILAMENT_CANCEL_MSG[]  = "Press left to cancel";
 
@@ -247,6 +251,7 @@ const PROGMEM prog_uchar LEFT_EXIT_MSG []    = "Linke Taste beendet ";
 
 const PROGMEM prog_uchar BACK_TO_MONITOR_MSG[] = "Back to Monitor";
 const PROGMEM prog_uchar STATS_MSG[]           = "Druck Statistik";
+const PROGMEM prog_uchar LIVE_Z_FIX[]			= "Live Z Offset Adj.";
 const PROGMEM prog_uchar CANCEL_BUILD_MSG[]    = "Cancel Print";
 const PROGMEM prog_uchar HEATERS_OFF_MSG[]     = "Heaters Off";
 
@@ -300,13 +305,15 @@ const PROGMEM prog_uchar ALT_UART_1_MSG[] = "UART1";
 #if defined(AUTO_LEVEL)
 const PROGMEM prog_uchar ALEVEL_UTILITY_COMP_MSG[] = "Auto-level Adj";
 const PROGMEM prog_uchar ALEVEL_COMP_OFFSET_MSG[]  = " Deflection"; // needs extra space
+const PROGMEM prog_uchar ALEVEL_PROBE_OFFSET[] = "Auto-level Offsets";
+const PROGMEM prog_uchar ALEVEL_PROBE_OFFSET_MSG[] = " Probe Offset"; // needs extra space
 const PROGMEM prog_uchar ALEVEL_UTILITY_MSG[]    = "Auto-level Variance";
 const PROGMEM prog_uchar ALEVEL_SCREEN_MSG1[]    = "Max height variance";
 const PROGMEM prog_uchar ALEVEL_SCREEN_MSG2[]    = "between probe pts.";
 const PROGMEM prog_uchar ALEVEL_COLINEAR_MSG[]   = "Auto-level failed\nBad probing points";
 const PROGMEM prog_uchar ALEVEL_INCOMPLETE_MSG[] = "Auto-level failed\nIncomplete probing";
 const PROGMEM prog_uchar ALEVEL_INACTIVE_MSG[]   = "Auto-level inactive ";  // must be 20 chars
-const PROGMEM prog_uchar ALEVEL_ACTIVE_MSG[]     = "Auto-level  0.000 mm";  // must be 20 chars
+const PROGMEM prog_uchar ALEVEL_ACTIVE_MSG[]     = "Auto-level  0.0000mm";  // must be 20 chars
 const PROGMEM prog_uchar ALEVEL_GOOD_MSG[]       = "The build plate is  " "leveled!";
 const PROGMEM prog_uchar ALEVEL_FAIL_MSG[]       = "The build plate is  " "not leveled!";
 const PROGMEM prog_uchar ALEVEL_MSG2[]           = "Press CENTER button " "to continue.";

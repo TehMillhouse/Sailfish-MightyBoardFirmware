@@ -102,6 +102,9 @@ ThermistorScreen              thermistorScreen;
 
 #if defined(COOLING_FAN_PWM)
 CoolingFanPwmScreen           coolingFanPwmScreen;
+#define MONITOR_MODE_HBP_OFFSET -8
+#else
+#define MONITOR_MODE_HBP_OFFSET 0
 #endif
 
 #if defined(AUTO_LEVEL)
@@ -1312,7 +1315,9 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 			row = 2;
 		}
 		else row = 3;
-
+#if defined(COOLING_FAN_PWM)
+		lcd.moveWriteFromPgmspace(13, 3, PWM_FAN_MSG);
+#endif
 		if ( singleTool )
 			lcd.moveWriteFromPgmspace(0, row--, EXTRUDER_TEMP_MSG);
 		else {
@@ -1355,6 +1360,7 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 			progressBar(lcd, currentDelta, setTemp);
 		}
 	}
+
 
 	// Redraw tool info
 	switch (updatePhase) {
@@ -1430,11 +1436,11 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 		if ( hasHBP ) {
 			data = board.getPlatformHeater().get_current_temperature();
 			if ( board.getPlatformHeater().has_failed() || data >= BAD_TEMPERATURE )
-				lcd.moveWriteFromPgmspace(12, 3, NA_MSG);
+				lcd.moveWriteFromPgmspace(12 MONITOR_MODE_HBP_OFFSET, 3, NA_MSG);
 			else if ( board.getPlatformHeater().isPaused() )
-				lcd.moveWriteFromPgmspace(12, 3, WAITING_MSG);
+				lcd.moveWriteFromPgmspace(12 MONITOR_MODE_HBP_OFFSET, 3, WAITING_MSG);
 			else
-				lcd.moveWriteInt(12, 3, data, 3);
+				lcd.moveWriteInt(12 MONITOR_MODE_HBP_OFFSET, 3, data, 3);
 		}
 		break;
 
@@ -1445,11 +1451,11 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 			     !board.getPlatformHeater().isPaused() ) {
 				data = board.getPlatformHeater().get_set_temperature();
 				if ( data > 0 ) {
-					lcd.moveWriteFromPgmspace(15, 3, ON_CELCIUS_MSG);
-					lcd.moveWriteInt(16, 3, data, 3);
+					lcd.moveWriteFromPgmspace(15 MONITOR_MODE_HBP_OFFSET, 3, ON_CELCIUS_MSG);
+					lcd.moveWriteInt(16 MONITOR_MODE_HBP_OFFSET, 3, data, 3);
 				}
 				else
-					lcd.moveWriteFromPgmspace(15, 3, CELCIUS_MSG);
+					lcd.moveWriteFromPgmspace(15 MONITOR_MODE_HBP_OFFSET, 3, CELCIUS_MSG);
 			}
 		}
 		break;
@@ -1473,9 +1479,27 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 			}
 		}
 		break;
+		
+#if defined(COOLING_FAN_PWM)
+	// Fan
+	case 7:
+		if(fan_pwm_enable)
+		{
+			lcd.moveWriteFromPgmspace(17, 3, PWM_FAN_PERCENT_MSG);
+			lcd.moveWriteInt(17, 3,fan_pwm_cached_value ,2);
+		}
+		else
+		{
+			if(EXTRA_FET.getValue())
+				lcd.moveWriteFromPgmspace(17, 3, PWM_FAN_MAX_MSG);
+			else
+				lcd.moveWriteFromPgmspace(17, 3, PWM_FAN_OFF_MSG);
+		}
 
+		break;
+#endif
 #ifdef BUILD_STATS
-	case 7 :
+	case 8 :
 		if (hasHBP && !singleTool)
 			break;
 		enum host::HostState hostState = host::getHostState();
@@ -1553,11 +1577,18 @@ void MonitorModeScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw) {
 		break;
 #endif // BUILD_STATS
 	}
-
-#ifdef BUILD_STATS
-	if (++updatePhase > 7)
+#if defined(COOLING_FAN_PWM)
+	#ifdef BUILD_STATS
+		if (++updatePhase > 8)
+	#else
+		if (++updatePhase > 7)
+	#endif
 #else
-	if (++updatePhase > 6)
+	#ifdef BUILD_STATS
+		if (++updatePhase > 7)
+	#else
+		if (++updatePhase > 6)
+	#endif
 #endif
 		updatePhase = 0;
 
@@ -2378,9 +2409,14 @@ void HomeOffsetsModeScreen::reset() {
 	  offset = eeprom_offsets::ALEVEL_PROBE_COMP_SETTINGS;
 	  msg = ALEVEL_COMP_OFFSET_MSG;
      }
+     else if ( do_home_offsets == 3 )
+     {
+         offset = eeprom_offsets::ALEVEL_PROBE_OFFSETS;
+         msg = ALEVEL_PROBE_OFFSET_MSG;
+     }
      else
 #endif
-     if ( do_home_offsets ) {
+	 if ( do_home_offsets ) {
 	  offset = eeprom_offsets::AXIS_HOME_POSITIONS_STEPS;
 	  msg = XYZOFFSET_MSG;
      }
@@ -2394,7 +2430,7 @@ void HomeOffsetsModeScreen::reset() {
      sei();
 
      lastHomeOffsetState = HOS_NONE;
-     homeOffsetState     = HOS_OFFSET_X;
+     homeOffsetState     = ( do_home_offsets == 4 ? HOS_OFFSET_Z : HOS_OFFSET_X );
      valueChanged = false;
 }
 
@@ -2455,6 +2491,19 @@ void HomeOffsetsModeScreen::notifyButtonPressed(ButtonArray::ButtonName button) 
 
 	switch (button) {
 	case ButtonArray::LEFT:
+		if ( do_home_offsets == 4 )
+		{
+			int32_t saved_z=0;
+			cli();
+			eeprom_read_block(&saved_z, (void *)(offset + Z_AXIS * sizeof(int32_t)), sizeof(int32_t));
+			sei();
+			saved_z = saved_z - homePosition[currentIndex];
+			if(saved_z != 0)
+			{
+				homePosition[currentIndex] += saved_z;
+				steppers::z_Offset_Change += saved_z;
+			}
+		}
 		interface::popScreen();
 		break;
 	case ButtonArray::CENTER:
@@ -2469,7 +2518,7 @@ void HomeOffsetsModeScreen::notifyButtonPressed(ButtonArray::ButtonName button) 
 
 		if ( homeOffsetState == HOS_OFFSET_X )
 		     homeOffsetState = HOS_OFFSET_Y;
-		else if ( (homeOffsetState == HOS_OFFSET_Y) && do_home_offsets )
+		else if ( (homeOffsetState == HOS_OFFSET_Y) && do_home_offsets && do_home_offsets != 3)
 		     homeOffsetState = HOS_OFFSET_Z;
 		else
 		     interface::popScreen();
@@ -2479,6 +2528,8 @@ void HomeOffsetsModeScreen::notifyButtonPressed(ButtonArray::ButtonName button) 
 	case ButtonArray::DOWN:
 		homePosition[currentIndex] += incr;
 		valueChanged = true;
+		if(do_home_offsets == 4) // live z change during a print
+			steppers::z_Offset_Change += incr;
 		break;
 	default:
 		break;
@@ -3065,6 +3116,8 @@ ActiveBuildMenu::ActiveBuildMenu() :
 void ActiveBuildMenu::resetState() {
 #if defined(COOLING_FAN_PWM)
 	fanState = fan_pwm_enable;
+	if(!fanState)//PWM is also disabled when fan on 100%
+		fanState = EX_FAN.getValue();
 #else
 	// When PWM mode is in used, the fan pin goes on
 	// and off at high frequency.  Cannot use the pin's
@@ -3080,7 +3133,7 @@ void ActiveBuildMenu::resetState() {
 	is_paused = command::isPaused();
 
 	// paused: 6 + load/unload; !paused: 6 + fan off + pause @ zpos + cold
-	itemCount = is_paused ? 7 + LIGHTING : 9 + LIGHTING;
+	itemCount = is_paused ? 7 + LIGHTING : 10 + LIGHTING;
 
 	// if HBP then add in temp change menu
 	if (eeprom::hasHBP()) ++itemCount;
@@ -3172,9 +3225,12 @@ void ActiveBuildMenu::drawItem(uint8_t index, LiquidCrystalSerial& lcd) {
 
 	if ( index == lind ) msg = STATS_MSG;
 	lind++;
-
+	
 	if ( !is_paused ) {
 		if ( index == lind ) msg = COLD_PAUSE_MSG;
+		lind++;
+		
+		if ( index == lind ) msg = LIVE_Z_FIX;
 		lind++;
 	}
 
@@ -3284,7 +3340,17 @@ void ActiveBuildMenu::handleSelect(uint8_t index) {
 	if ( !is_paused ) {
 		if ( index == lind ) {
 			fanState = !fanState;
-			Motherboard::setExtra(fanState);
+			if(fanState)//unpause
+			{	
+				if(fan_pwm_cached_value > -1)
+					Motherboard::setExtra(fan_pwm_cached_value,true);//Restart fan with cached value.
+				else
+					Motherboard::setExtra(true);//Restart fan with eeprom value.
+			}
+			else//pause
+			{
+				Motherboard::setExtra(false);// Pause fan
+			}
 			lineUpdate = true;
 			return;
 		}
@@ -3324,6 +3390,12 @@ void ActiveBuildMenu::handleSelect(uint8_t index) {
 			resetState();
 			needsRedraw = true;
 		}
+		lind++;
+		if ( index == lind ) {
+		homeOffsetsModeScreen.do_home_offsets = 4;
+		interface::pushScreen(&homeOffsetsModeScreen);
+		}
+		lind++;
 	}
 }
 
@@ -3393,7 +3465,7 @@ void BuildStatsScreen::update(LiquidCrystalSerial& lcd, bool forceRedraw){
 		     if ( skew_active && 0 <= ( status = skew_status() ) ) {
 			  lcd.moveWriteFromPgmspace(0, 3, ALEVEL_ACTIVE_MSG);
 			  lcd.setCursor(12, 3);
-			  lcd.writeFloat(stepperAxisStepsToMM(status, Z_AXIS), 3, 0);
+			  lcd.writeFloat(stepperAxisStepsToMM(status, Z_AXIS), 4, 0);
 		     }
 		     else
 			  lcd.moveWriteFromPgmspace(0, 3, ALEVEL_INACTIVE_MSG);
@@ -3671,6 +3743,9 @@ void UtilitiesMenu::drawItem(uint8_t index, LiquidCrystalSerial& lcd) {
 	if ( index == lind ) msg = ALEVEL_UTILITY_MSG;
 	lind++;
 
+        if ( index == lind ) msg = ALEVEL_PROBE_OFFSET;
+	lind++;
+
 #if defined(PSTOP_SUPPORT) && defined(PSTOP_ZMIN_LEVEL)
 	if ( index == lind ) msg = MAX_PROBE_HITS_MSG1;
 	lind++;
@@ -3819,6 +3894,13 @@ void UtilitiesMenu::handleSelect(uint8_t index) {
 
 	if ( index == lind ) {
 	     interface::pushScreen(&alevelZDiffScreen);
+	}
+	lind++;
+
+	if ( index == lind ) {
+	     // Probe offsets for X and Y
+	     homeOffsetsModeScreen.do_home_offsets = 3;
+	     interface::pushScreen(&homeOffsetsModeScreen);
 	}
 	lind++;
 
