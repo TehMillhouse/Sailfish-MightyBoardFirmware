@@ -268,9 +268,20 @@ bool processCommandPacket(const InPacket& from_host, OutPacket& to_host) {
 
     // alert the host that the bot has had a heat failure
 void heatShutdown(){
+	if (currentState == HOST_STATE_BUILDING ||
+		currentState == HOST_STATE_BUILDING_FROM_SD ||
+		currentState == HOST_STATE_BUILDING_ONBOARD) {
+		if (1 == eeprom::getEeprom8(eeprom_offsets::CLEAR_FOR_ESTOP, 0)) {
+			buildState = BUILD_CANCELED;
+#if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
+			steppers::disableZMinEnd(false);
+#endif
+			steppers::z_Offset_Change = 0;//we reset the gap to ZERO to avoid summing it next time we start a print.
+			stopBuild();
+		}
+	}
 	currentState = HOST_STATE_HEAT_SHUTDOWN;
-	cancelBuild = true;
-}
+	cancelBuild = true;}
 
 
 // Received driver version info, and request for fw version info.
