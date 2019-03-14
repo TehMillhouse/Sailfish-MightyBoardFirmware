@@ -743,10 +743,10 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t y = pop32();
 			int32_t z = pop32();
 			int32_t a = pop32();
-			if ( steppers::alterExtrusion ) a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
+			if ( steppers::alterExtrusion && (a - lastFilamentPosition[0]) > 0) a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
 #if EXTRUDERS > 1
 			int32_t b = pop32();
-			if ( steppers::alterExtrusion ) b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
+			if ( steppers::alterExtrusion && (b - lastFilamentPosition[1]) > 0) b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
 #else
 			pop32();
 #endif
@@ -783,10 +783,6 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t z = pop32();
 			int32_t a = pop32();
 			int32_t b = pop32();
-			if ( steppers::alterExtrusion ) {
-				a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
-				b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
-			}
 			int32_t us = pop32();
 			uint8_t relative = pop8();
 
@@ -807,11 +803,21 @@ static void handleMovementCommand(const uint8_t &command) {
 				}
 			}
 #endif
+			bool rel[2] = { relative & (1 << (A_AXIS)), relative & (1 << (B_AXIS)) };
+
+			if (steppers::alterExtrusion) {
+				if ((rel[0] && a > 0) || (!rel[0] && (a - lastFilamentPosition[0]) > 0))
+					a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
+#if EXTRUDERS > 1
+				if ((rel[1] && b > 0) || (!rel[1] && (b - lastFilamentPosition[1]) > 0))
+					b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
+#endif
+			}
 
 			int32_t ab[2] = {a,b};
 
 			for ( int i = 0; i < 2; i ++ ) {
-				if ( relative & (1 << (A_AXIS + i))) {
+				if (rel[i]) {
 					filamentLength[i] += (int64_t)ab[i];
 					lastFilamentPosition[i] += ab[i];
 				} else {
@@ -838,10 +844,6 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t z = pop32();
 			int32_t a = pop32();
 			int32_t b = pop32();
-			if ( steppers::alterExtrusion ) {
-				a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
-				b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
-			}
 			int32_t dda_rate = pop32();
 			uint8_t relative = pop8() & 0x7F; // make sure that the high bit is clear
 			int32_t distanceInt32 = pop32();
@@ -865,11 +867,18 @@ static void handleMovementCommand(const uint8_t &command) {
 				}
 			}
 #endif
+			bool rel[2] = { relative & (1 << (A_AXIS)), relative & (1 << (B_AXIS)) };
+			if (steppers::alterExtrusion) {
+				if ((rel[0] && a > 0) || (!rel[0] && (a - lastFilamentPosition[0]) > 0))
+					a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
+				if ((rel[1] && b > 0) || (!rel[1] && (b - lastFilamentPosition[1]) > 0))
+					b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
+			}
 
 			int32_t ab[2] = {a,b};
 
 			for ( int i = 0; i < 2; i ++ ) {
-				if ( relative & (1 << (A_AXIS + i))) {
+				if (rel[i]) {
 					filamentLength[i] += (int64_t)ab[i];
 					lastFilamentPosition[i] += ab[i];
 				} else {
@@ -1603,22 +1612,7 @@ void runCommandSlice() {
 					mode = WAIT_ON_BUTTON;
 				}
 			} else if (command == HOST_CMD_DISPLAY_MESSAGE) {
-                if ( command_buffer[5] == 'F' && command_buffer[6] == '\0' ) {
-					pop32(); // remove the command code, xpos, ypos, options
-					uint8_t timeout_seconds = pop8();
-                    pop16(); // discard message
-                    fan_pwm_enable = false;
-                    fan_pwm_override = true;
-                    fan_pwm_override_value = timeout_seconds;
-
-                    fan_pwm_bottom_count = (255 - (1 << FAN_PWM_BITS)) +
-                                            (int)(0.5 +  ((uint16_t)(1 << FAN_PWM_BITS) * fan_pwm_override_value) / 100.0);
-                    fan_pwm_enable = true;
-                    LINE_NUMBER_INCR;
-                    goto DISPLAY_MESSAGE_DONE;
-                }
-				MessageScreen* scr;
-                scr = Motherboard::getBoard().getMessageScreen();
+				MessageScreen* scr = Motherboard::getBoard().getMessageScreen();
 				if (command_buffer.getLength() >= 6) {
 					pop8(); // remove the command code
 					uint8_t options = pop8();
@@ -1662,7 +1656,6 @@ void runCommandSlice() {
 						}
 					}
 				}
-DISPLAY_MESSAGE_DONE:;
 			} else if (command == HOST_CMD_FIND_AXES_MINIMUM ||
 				   command == HOST_CMD_FIND_AXES_MAXIMUM) {
 				if (command_buffer.getLength() >= 8) {
