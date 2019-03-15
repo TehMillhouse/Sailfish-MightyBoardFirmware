@@ -1053,7 +1053,7 @@ void handlePauseState(void) {
 		    Motherboard& board = Motherboard::getBoard();
 
 		    // Turn the fan off
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 		    pausedFanState = fan_pwm_enable;
 #else
 		    // When PWM mode is in used, the fan pin goes on
@@ -1615,51 +1615,74 @@ void runCommandSlice() {
 					BOARD_STATUS_SET(Motherboard::STATUS_WAITING_FOR_BUTTON);
 					mode = WAIT_ON_BUTTON;
 				}
-			} else if (command == HOST_CMD_DISPLAY_MESSAGE) {
-				MessageScreen* scr = Motherboard::getBoard().getMessageScreen();
-				if (command_buffer.getLength() >= 6) {
-					pop8(); // remove the command code
-					uint8_t options = pop8();
-					uint8_t xpos = pop8();
-					uint8_t ypos = pop8();
+			}
+			else if (command == HOST_CMD_DISPLAY_MESSAGE) {
+#if defined(COOLING_FAN_PWM_ON_DISPLAY)
+				if (command_buffer[5] == 'F' && command_buffer[6] == '\0') {
+					pop32(); // remove the command code, xpos, ypos, options
 					uint8_t timeout_seconds = pop8();
+					pop16(); // discard message
+					fan_pwm_enable = false;
+					fan_pwm_override = true;
+					fan_pwm_override_value = timeout_seconds;
+
+					fan_pwm_bottom_count = (255 - (1 << FAN_PWM_BITS)) +
+						(int)(0.5 + ((uint16_t)(1 << FAN_PWM_BITS) * fan_pwm_override_value) / 100.0);
+					fan_pwm_enable = true;
 					LINE_NUMBER_INCR;
+				}
+				else
+				{
+#endif
+					MessageScreen* scr = Motherboard::getBoard().getMessageScreen();
+					if (command_buffer.getLength() >= 6) {
+						pop8(); // remove the command code
+						uint8_t options = pop8();
+						uint8_t xpos = pop8();
+						uint8_t ypos = pop8();
+						uint8_t timeout_seconds = pop8();
+						LINE_NUMBER_INCR;
 
-                    // check message clear bit
-					if ( (options & (1 << 0)) == 0 ) { scr->clearMessage(); }
-					// set position and add message
-					scr->setXY(xpos,ypos);
-					scr->addMessage(command_buffer);
+						// check message clear bit
+						if ((options & (1 << 0)) == 0) { scr->clearMessage(); }
+						// set position and add message
+						scr->setXY(xpos, ypos);
+						scr->addMessage(command_buffer);
 
-					// push message screen if the full message has been recieved
-					if((options & (1 << 1))){
-						InterfaceBoard& ib = Motherboard::getBoard().getInterfaceBoard();
-						if (ib.getCurrentScreen() != scr) {
-							ib.pushScreen(scr);
-						} else {
-							scr->refreshScreen();
-						}
-						// set message timeout if not a buttonWait call
-						if ((timeout_seconds != 0) && (!(options & (1 <<2)))) {
-								scr->setTimeout(timeout_seconds);//, true);
-						}
-
-						if (options & (1 << 2)) { // button wait bit --> start button wait
-							if (timeout_seconds != 0) {
-								button_wait_timeout.start(timeout_seconds * 1000L * 1000L);
-							} else {
-								button_wait_timeout = Timeout();
-							}
-							button_mask = (1 << ButtonArray::CENTER);  // center button
-							button_timeout_behavior &= (1 << BUTTON_CLEAR_SCREEN);
-							Motherboard::interfaceBlinkOn();
+						// push message screen if the full message has been recieved
+						if ((options & (1 << 1))) {
 							InterfaceBoard& ib = Motherboard::getBoard().getInterfaceBoard();
-							ib.waitForButton(button_mask);
-							BOARD_STATUS_SET(Motherboard::STATUS_WAITING_FOR_BUTTON);
-							mode = WAIT_ON_BUTTON;
+							if (ib.getCurrentScreen() != scr) {
+								ib.pushScreen(scr);
+							}
+							else {
+								scr->refreshScreen();
+							}
+							// set message timeout if not a buttonWait call
+							if ((timeout_seconds != 0) && (!(options & (1 << 2)))) {
+								scr->setTimeout(timeout_seconds);//, true);
+							}
+
+							if (options & (1 << 2)) { // button wait bit --> start button wait
+								if (timeout_seconds != 0) {
+									button_wait_timeout.start(timeout_seconds * 1000L * 1000L);
+								}
+								else {
+									button_wait_timeout = Timeout();
+								}
+								button_mask = (1 << ButtonArray::CENTER);  // center button
+								button_timeout_behavior &= (1 << BUTTON_CLEAR_SCREEN);
+								Motherboard::interfaceBlinkOn();
+								InterfaceBoard& ib = Motherboard::getBoard().getInterfaceBoard();
+								ib.waitForButton(button_mask);
+								BOARD_STATUS_SET(Motherboard::STATUS_WAITING_FOR_BUTTON);
+								mode = WAIT_ON_BUTTON;
+							}
 						}
 					}
+#if defined(COOLING_FAN_PWM_ON_DISPLAY)
 				}
+#endif
 			} else if (command == HOST_CMD_FIND_AXES_MINIMUM ||
 				   command == HOST_CMD_FIND_AXES_MAXIMUM) {
 				if (command_buffer.getLength() >= 8) {

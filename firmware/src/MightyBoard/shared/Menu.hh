@@ -407,7 +407,7 @@ public:
 	void notifyButtonPressed(ButtonArray::ButtonName button);
 };
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 
 class CoolingFanPwmScreen: public Screen {
 
