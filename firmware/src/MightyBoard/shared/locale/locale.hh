@@ -309,7 +309,7 @@ extern const unsigned char MACHINE_ID_REP2_MSG[];
 extern const unsigned char MACHINE_ID_REP2X_MSG[];
 #endif
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 extern const unsigned char COOLING_FAN_PWM_MSG[];
 #endif
 

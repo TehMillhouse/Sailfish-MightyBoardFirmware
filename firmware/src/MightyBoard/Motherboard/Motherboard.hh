@@ -55,6 +55,12 @@
 
 #if defined(COOLING_FAN_PWM)
 extern bool fan_pwm_enable;
+#elif defined(COOLING_FAN_PWM_ON_DISPLAY)
+#define FAN_PWM_BITS 6
+extern uint8_t fan_pwm_bottom_count;
+extern bool fan_pwm_enable;
+extern bool fan_pwm_override;
+extern uint8_t fan_pwm_override_value;
 #endif
 
 #ifdef DEBUG_VALUE

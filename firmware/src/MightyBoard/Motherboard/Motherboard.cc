@@ -93,12 +93,20 @@ static bool singleTool;
 uint8_t board_status;
 static bool heating_lights_active;
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 #define FAN_PWM_BITS 6
-static uint8_t fan_pwm_bottom_count;
+#endif
+
+#if defined(COOLING_FAN_PWM)
 //fan duty cycle 0-100 cached from incoming commands.
+static uint8_t fan_pwm_bottom_count;
 int8_t fan_pwm_cached_value;
 bool           fan_pwm_enable = false;
+#elif defined(COOLING_FAN_PWM_ON_DISPLAY)
+uint8_t fan_pwm_bottom_count;
+bool           fan_pwm_enable = false;
+bool           fan_pwm_override = false;
+uint8_t        fan_pwm_override_value = 100;
 #endif
 
 #if defined(PSTOP_ZMIN_LEVEL)
@@ -908,7 +916,7 @@ volatile uint8_t pwmcnt = 0;
 
 /// Timer 5 overflow interrupt
 ISR(TIMER5_COMPA_vect) {
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
      static uint8_t fan_pwm_counter = 255;
 #endif
 
@@ -932,7 +940,7 @@ ISR(TIMER5_COMPA_vect) {
         pwmcnt++;
 #endif
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
     if ( fan_pwm_enable ) {
 	 // fan_pwm_counter is uint8_t
 	 //   we expect it to wrap such that 255 + 1 ==> 0
@@ -1008,7 +1016,6 @@ void Motherboard::setUsingPlatform(bool is_using) {
 }
 
 #if defined(COOLING_FAN_PWM)
-
 void Motherboard::setExtra(uint8_t value, bool bypass_eeprom) {
      uint16_t fan_pwm; // Will be multiplying 8 bits by 100(decimal)
 
@@ -1044,7 +1051,42 @@ void Motherboard::setExtra(uint8_t value, bool bypass_eeprom) {
      fan_pwm_bottom_count = (255 - (1 << FAN_PWM_BITS)) +
 	  (int)(0.5 +  ((uint16_t)(1 << FAN_PWM_BITS) * fan_pwm) / 100.0);
 }
+#elif defined(COOLING_FAN_PWM_ON_DISPLAY)
+void Motherboard::setExtra(bool on) {
+	uint16_t fan_pwm; // Will be multiplying 8 bits by 100(decimal)
 
+	// Disable any fan PWM handling in Timer 5
+	fan_pwm_enable = false;
+
+	if (!on) {
+		EXTRA_FET.setValue(false);
+		return;
+	}
+
+	// See what the PWM setting is -- may have been changed
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		if (fan_pwm_override) {
+			fan_pwm = (uint16_t)fan_pwm_override_value;
+		}
+		else {
+			fan_pwm = (uint16_t)eeprom::getEeprom8(eeprom_offsets::COOLING_FAN_DUTY_CYCLE,
+				COOLING_FAN_DUTY_CYCLE_DEFAULT);
+		}
+	}
+
+	// Don't bother with PWM handling if the PWM is >= 100
+	// Just turn the fan on full tilt
+	if (fan_pwm >= 100) {
+		EXTRA_FET.setValue(true);
+		return;
+	}
+
+	// Fan is to be turned on AND we are doing PWM
+	// We start the bottom count at 255 - 64 and then wrap
+	fan_pwm_enable = true;
+	fan_pwm_bottom_count = (255 - (1 << FAN_PWM_BITS)) +
+		(int)(0.5 + ((uint16_t)(1 << FAN_PWM_BITS) * fan_pwm) / 100.0);
+}
 #else
 
 void Motherboard::setExtra(bool on) {

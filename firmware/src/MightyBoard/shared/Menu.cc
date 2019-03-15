@@ -100,11 +100,11 @@ UtilitiesMenu                 utilityMenu;
 ThermistorScreen              thermistorScreen;
 #endif
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 CoolingFanPwmScreen           coolingFanPwmScreen;
 #define MONITOR_MODE_HBP_OFFSET -8
 #else
-#define MONITOR_MODE_HBP_OFFSET 0
+#define MONITOR_MODE_HBP_OFFSET +0
 #endif
 
 #if defined(AUTO_LEVEL)
@@ -3056,7 +3056,7 @@ void ChangePlatformTempScreen::notifyButtonPressed(ButtonArray::ButtonName butto
 	}
 }
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 
 void CoolingFanPwmScreen::reset() {
      fan_pwm = (int8_t)eeprom::getEeprom8(eeprom_offsets::COOLING_FAN_DUTY_CYCLE,
@@ -3114,7 +3114,7 @@ ActiveBuildMenu::ActiveBuildMenu() :
 }
 
 void ActiveBuildMenu::resetState() {
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 	fanState = fan_pwm_enable;
 	if(!fanState)//PWM is also disabled when fan on 100%
 		fanState = EX_FAN.getValue();
@@ -3342,9 +3342,11 @@ void ActiveBuildMenu::handleSelect(uint8_t index) {
 			fanState = !fanState;
 			if(fanState)//unpause
 			{	
+#if defined(COOLING_FAN_PWM)
 				if(fan_pwm_cached_value > -1)
 					Motherboard::setExtra(fan_pwm_cached_value,true);//Restart fan with cached value.
 				else
+#endif
 					Motherboard::setExtra(true);//Restart fan with eeprom value.
 			}
 			else//pause
@@ -3626,7 +3628,7 @@ UtilitiesMenu::UtilitiesMenu() :
 #if !defined(SINGLE_EXTRUDER)
 	     + 2
 #endif
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 	    + 1
 #endif
 #if defined(EEPROM_MENU_ENABLE)
@@ -3655,7 +3657,7 @@ void UtilitiesMenu::resetState() {
 #if !defined(SINGLE_EXTRUDER)
 	     2 +
 #endif
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 	     1 +
 #endif
 #if defined(EEPROM_MENU_ENABLE)
@@ -3760,7 +3762,7 @@ void UtilitiesMenu::drawItem(uint8_t index, LiquidCrystalSerial& lcd) {
 	}
 #endif
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 	if ( index == lind ) msg = COOLING_FAN_PWM_MSG;
 	lind++;
 #endif
@@ -3926,7 +3928,7 @@ void UtilitiesMenu::handleSelect(uint8_t index) {
 	}
 #endif
 
-#if defined(COOLING_FAN_PWM)
+#if defined(COOLING_FAN_PWM) || defined(COOLING_FAN_PWM_ON_DISPLAY)
 	if ( index == lind ) {
 	     interface::pushScreen(&coolingFanPwmScreen);
 	}
