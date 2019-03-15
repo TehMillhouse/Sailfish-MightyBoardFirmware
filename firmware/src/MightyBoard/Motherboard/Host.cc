@@ -271,18 +271,16 @@ void heatShutdown(){
 	if (currentState == HOST_STATE_BUILDING ||
 		currentState == HOST_STATE_BUILDING_FROM_SD ||
 		currentState == HOST_STATE_BUILDING_ONBOARD) {
-		if (1 == eeprom::getEeprom8(eeprom_offsets::CLEAR_FOR_ESTOP, 0)) {
-			buildState = BUILD_CANCELED;
+		buildState = BUILD_CANCELED;
 #if defined(AUTO_LEVEL) && defined(AUTO_LEVEL_IGNORE_ZMIN_ONBUILD)
-			steppers::disableZMinEnd(false);
+		steppers::disableZMinEnd(false);
 #endif
-			steppers::z_Offset_Change = 0;//we reset the gap to ZERO to avoid summing it next time we start a print.
-			stopBuild();
-		}
+		steppers::z_Offset_Change = 0;//we reset the gap to ZERO to avoid summing it next time we start a print.
+		stopBuild();
 	}
 	currentState = HOST_STATE_HEAT_SHUTDOWN;
-	cancelBuild = true;}
-
+	cancelBuild = true;
+}
 
 // Received driver version info, and request for fw version info.
 // puts fw version into a reply packet, and send it back
