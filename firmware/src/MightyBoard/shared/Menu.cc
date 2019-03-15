@@ -2197,7 +2197,7 @@ void ProfileChangeNameModeScreen::notifyButtonPressed(ButtonArray::ButtonName bu
 }
 
 ProfileDisplaySettingsMenu::ProfileDisplaySettingsMenu() :
-	Menu(0, (uint8_t)8) {
+	Menu(0, (uint8_t)7) {
 	reset();
 }
 
@@ -3133,7 +3133,7 @@ void ActiveBuildMenu::resetState() {
 	is_paused = command::isPaused();
 
 	// paused: 6 + load/unload; !paused: 6 + fan off + pause @ zpos + cold
-	itemCount = is_paused ? 8 + LIGHTING : 11 + LIGHTING;
+	itemCount = is_paused ? 7 + LIGHTING : 11 + LIGHTING;
 
 	// if HBP then add in temp change menu
 	if (eeprom::hasHBP()) ++itemCount;
