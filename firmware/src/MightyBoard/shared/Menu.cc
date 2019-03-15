@@ -3133,7 +3133,7 @@ void ActiveBuildMenu::resetState() {
 	is_paused = command::isPaused();
 
 	// paused: 6 + load/unload; !paused: 6 + fan off + pause @ zpos + cold
-	itemCount = is_paused ? 7 + LIGHTING : 10 + LIGHTING;
+	itemCount = is_paused ? 8 + LIGHTING : 11 + LIGHTING;
 
 	// if HBP then add in temp change menu
 	if (eeprom::hasHBP()) ++itemCount;
@@ -3994,7 +3994,7 @@ void BotStatsScreen::notifyButtonPressed(ButtonArray::ButtonName button) {
 
 SettingsMenu::SettingsMenu() :
 	CounterMenu(_BV((uint8_t)ButtonArray::UP) | _BV((uint8_t)ButtonArray::DOWN),
-				(uint8_t)7
+				(uint8_t)8
 #if EXTRUDERS > 1
 				+ 1
 #endif
