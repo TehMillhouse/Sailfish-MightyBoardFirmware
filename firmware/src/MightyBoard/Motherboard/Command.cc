@@ -836,10 +836,6 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t z = pop32();
 			int32_t a = pop32();
 			int32_t b = pop32();
-			if ( steppers::alterExtrusion ) {
-				a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
-				b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
-			}
 			int32_t us = pop32();
 			uint8_t relative = pop8();
 
@@ -864,7 +860,7 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t ab[2] = {a,b};
 
 			for ( int i = 0; i < 2; i ++ ) {
-				if ( relative & (1 << (A_AXIS + i))) {
+				if (relative & (1 << (A_AXIS + i))) {
 					filamentLength[i] += (int64_t)ab[i];
 					lastFilamentPosition[i] += ab[i];
 				} else {
@@ -891,10 +887,6 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t z = pop32();
 			int32_t a = pop32();
 			int32_t b = pop32();
-			if ( steppers::alterExtrusion ) {
-				a = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(a)));
-				b = FPTOI(FPMULT2(steppers::extrusionFactor, ITOFP(b)));
-			}
 			int32_t dda_rate = pop32();
 			uint8_t relative = pop8() & 0x7F; // make sure that the high bit is clear
 			int32_t distanceInt32 = pop32();
@@ -922,7 +914,7 @@ static void handleMovementCommand(const uint8_t &command) {
 			int32_t ab[2] = {a,b};
 
 			for ( int i = 0; i < 2; i ++ ) {
-				if ( relative & (1 << (A_AXIS + i))) {
+				if (relative & (1 << (A_AXIS + i))) {
 					filamentLength[i] += (int64_t)ab[i];
 					lastFilamentPosition[i] += ab[i];
 				} else {
